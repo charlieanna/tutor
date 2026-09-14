@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Tutor — mastery tape</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --navy:#1a2744; --brass:#c4a35a; --paper:#e8e0d0; --sage:#3d6b5a;
+  --fail:#8b3a3a; --ink:#1c1810; --mute:#6b6256; --strip:#121a2e;
+}
+* { box-sizing: border-box; }
+html, body { margin:0; background:var(--navy); color:var(--paper);
+  font: 16px/1.45 "IBM Plex Sans", system-ui, sans-serif; }
+h1,h2 { font-family: Fraunces, Georgia, serif; font-weight:700; letter-spacing:-0.02em; }
+a { color:var(--brass); }
+header { background:var(--strip); padding:1rem 1.5rem; border-bottom:3px solid var(--brass);
+  display:flex; justify-content:space-between; align-items:baseline; gap:1rem; flex-wrap:wrap; }
+header .mark { font-family: Fraunces, serif; font-size:1.4rem; }
+header .mark span { color:var(--brass); }
+nav button, .btn {
+  background:transparent; color:var(--paper); border:1px solid var(--brass);
+  padding:.4rem .8rem; font: 500 13px "IBM Plex Mono", monospace; cursor:pointer; }
+nav button.on, .btn:hover { background:var(--brass); color:var(--navy); }
+.card .btn { color:var(--navy); background:#f6f0e4; }
+main { max-width:52rem; margin:0 auto; padding:1.5rem; }
+.tape { display:flex; gap:.4rem; overflow-x:auto; padding:.6rem 0 1rem;
+  border-bottom:1px dashed var(--brass); margin-bottom:1.2rem; }
+.chip { flex:0 0 auto; font: 11px/1.2 "IBM Plex Mono", monospace; background:#243152;
+  padding:.35rem .5rem; border-left:3px solid var(--mute); }
+.chip.hot { border-color:var(--brass); }
+.chip .f { color:var(--brass); }
+.card { background:var(--paper); color:var(--ink); padding:1.2rem 1.4rem;
+  box-shadow: 6px 6px 0 #0d1424; }
+.stem { font-family:"IBM Plex Mono", monospace; font-size:.95rem; white-space:pre-wrap; }
+.opt { display:block; width:100%; text-align:left; margin:.4rem 0; padding:.55rem .7rem;
+  border:1px solid #cfc4ae; background:#f6f0e4; font: 14px "IBM Plex Sans", sans-serif; cursor:pointer; }
+.opt:hover, .opt:focus { outline:2px solid var(--brass); }
+.opt:disabled { opacity:.7; cursor:default; }
+.ok { color:var(--sage); font-weight:600; }
+.bad { color:var(--fail); font-weight:600; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th, td { padding:.35rem .4rem; border-bottom:1px solid #243152; text-align:left; }
+textarea { width:100%; min-height:7rem; font: 14px "IBM Plex Mono", monospace; padding:.6rem;
+  background:#f6f0e4; border:1px solid #cfc4ae; color:var(--ink); }
+.meta { color:var(--mute); font-size:12px; font-family:"IBM Plex Mono", monospace; }
+#gate { max-width:28rem; margin:4rem auto; }
+@media (max-width:640px) { main { padding:1rem; } header { padding:.8rem; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="mark">Tutor <span>mastery tape</span></div>
+  <nav>
+    <button data-view="drill" class="on">Drill</button>
+    <button data-view="design">Design</button>
+    <button data-view="sim">Sim</button>
+    <button data-view="report">Weakness</button>
+  </nav>
+</header>
+<main>
+  <div id="gate">
+    <h1>Evidence, not explanation.</h1>
+    <p>Senior-interview practice. Wrong answers are diagnostic. Delayed re-tests, not vibes.</p>
+    <p><button class="btn" id="mint">Issue a private strip</button></p>
+    <p class="meta">or open <code>/t/&lt;token&gt;</code> — two tokens never share state.</p>
+  </div>
+  <div id="app" hidden>
+    <div class="tape" id="tape"></div>
+    <div id="panel"></div>
+  </div>
+</main>
+<script>
+const token = location.pathname.startsWith('/t/') ? location.pathname.split('/')[2] : null;
+const $ = s => document.querySelector(s);
+let view = 'drill';
+let items = [], idx = 0;
+
+async function api(path, opt) {
+  const r = await fetch(path, Object.assign({headers:{'Content-Type':'application/json'}}, opt||{}));
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+function paintTape(rows) {
+  const el = $('#tape');
+  el.innerHTML = rows.slice(0,12).map(r =>
+    `<div class="chip ${r.fails||r.overdue?'hot':''}"><div>${r.concept}</div>
+     <div class="f">${r.frontier} · ${r.fade}${r.overdue?' · due':''}</div></div>`).join('');
+}
+async function refreshTape() {
+  const data = await api(`/api/${token}/report`);
+  paintTape(data.rows);
+}
+function setView(v) {
+  view = v;
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.view===v));
+  if (v==='report') showReport();
+  else if (v==='sim') showSim();
+  else startSession(v==='design' ? 'design_session' : 'quick_drill');
+}
+async function startSession(kind) {
+  const n = kind==='design_session' ? 3 : 6;
+  const data = await api(`/api/${token}/drill?n=${n}&session_type=${kind}`, {method:'POST'});
+  items = data.items.filter(it => it.kind !== 'example');
+  idx = 0;
+  showItem();
+  refreshTape();
+}
+function showItem() {
+  const p = $('#panel');
+  if (idx >= items.length) {
+    p.innerHTML = `<div class="card"><h2>Strip complete.</h2>
+      <p class="meta">Delayed re-tests are scheduled. Explanation is not mastery.</p>
+      <button class="btn" onclick="setView(view)">Again</button></div>`;
+    refreshTape();
+    return;
+  }
+  const q = items[idx];
+  let body = `<div class="card"><p class="meta">${idx+1}/${items.length} · ${q.concept} · ${q.level}</p>
+    <div class="stem">${escapeHtml(q.stem)}</div>`;
+  if (q.kind === 'free_text') {
+    body += `<p class="meta">≤ ${q.word_limit||150} words. One decision and its cost.</p>
+      <textarea id="ans"></textarea>
+      <p><button class="btn" onclick="submitText(true)">I think this holds</button>
+         <button class="btn" onclick="submitText(false)">I missed something</button></p>`;
+  } else {
+    body += (q.options||[]).map((o,i)=>
+      `<button class="opt" onclick="submitChoice(${i})">${String.fromCharCode(65+i)}) ${escapeHtml(o.text)}</button>`).join('');
+  }
+  body += `<div id="fb"></div></div>`;
+  p.innerHTML = body;
+}
+function advance() { idx++; showItem(); }
+async function submitChoice(i) {
+  document.querySelectorAll('.opt').forEach(b => { b.disabled = true; b.onclick = null; });
+  const q = items[idx];
+  const res = await api(`/api/${token}/answer`, {method:'POST', body: JSON.stringify({qid:q.id, choice:i, session_type: view==='design'?'design_session':'quick_drill'})});
+  const fb = $('#fb');
+  if (res.correct) {
+    fb.innerHTML = `<p class="ok">Correct.</p>`;
+    setTimeout(advance, 600);
+    return;
+  }
+  fb.innerHTML = `<p class="bad">Wrong.</p><p>${escapeHtml(res.explanation||'')}</p>` +
+    (res.ruled_out_by ? `<p class="meta">Ruled out: ${escapeHtml(res.ruled_out_by)}</p>` : '') +
+    (res.clarification ? `<p>${escapeHtml(res.clarification)}</p>` : '') +
+    `<p><button class="btn" id="nextq">Next</button></p>`;
+  $('#nextq').onclick = advance;
+}
+async function submitText(ok) {
+  const q = items[idx];
+  const text = $('#ans').value;
+  document.querySelectorAll('.card .btn').forEach(b => b.disabled = true);
+  await api(`/api/${token}/answer`, {method:'POST', body: JSON.stringify({qid:q.id, text, self_correct:ok, session_type:'design_session'})});
+  if (ok) {
+    $('#fb').innerHTML = `<p class="ok">Recorded.</p>`;
+    setTimeout(advance, 700);
+    return;
+  }
+  $('#fb').innerHTML = `<p class="bad">Recorded — gaps stay on the map.</p>
+    <p><button class="btn" id="nextq">Next</button></p>`;
+  $('#nextq').onclick = advance;
+}
+async function showReport() {
+  const data = await api(`/api/${token}/report`);
+  paintTape(data.rows);
+  $('#panel').innerHTML = `<div class="card"><h2>Weakness map</h2>
+    <table><thead><tr><th>concept</th><th>frontier</th><th>fade</th><th>fails</th><th>overdue</th></tr></thead>
+    <tbody>${data.rows.map(r=>`<tr><td>${r.concept}</td><td>${r.frontier}</td><td>${r.fade}</td>
+      <td>${r.fails}</td><td>${r.overdue?'yes':'no'}</td></tr>`).join('')}</tbody></table></div>`;
+}
+async function showSim() {
+  const sc = await api(`/api/${token}/sim`);
+  const num = sc.numeric ? `<p class="meta">2. Capacity math</p><div class="stem">${escapeHtml(sc.numeric.stem)}</div>` +
+    (sc.numeric.options||[]).map((o,i)=>`<label class="opt"><input type="radio" name="cap" value="${i}"/> ${escapeHtml(o.text)}</label>`).join('') :
+    `<p class="meta">2. Capacity math</p><p class="meta">(no numeric item in this scenario)</p>`;
+  const probes = (sc.probes||[]).map((p,i)=>`<p class="meta">${escapeHtml(p.concept)}</p>
+    <div class="stem">${escapeHtml(p.prompt)}</div>
+    <textarea id="probe${i}"></textarea>`).join('');
+  $('#panel').innerHTML = `<div class="card"><h2>${escapeHtml(sc.title)}</h2>
+    <div class="stem">${escapeHtml(sc.brief)}</div>
+    <p class="meta">1. Constraints the brief left unspecified</p>
+    <textarea id="constraints"></textarea>
+    ${num}
+    <p class="meta">3. Sketch one decision and its cost</p>
+    <textarea id="sketch"></textarea>
+    <p class="meta">4. Deep-dive (from your weakness map)</p>
+    ${probes}
+    <p class="meta">5. Failure modes</p>
+    <textarea id="failure"></textarea>
+    <p><button class="btn" id="simgo">Record sim</button></p>
+    <div id="fb"></div></div>`;
+  $('#simgo').onclick = submitSim;
+}
+async function submitSim() {
+  const cap = document.querySelector('input[name=cap]:checked');
+  const probes = [...document.querySelectorAll('[id^=probe]')].map(el => el.value);
+  const res = await api(`/api/${token}/sim`, {method:'POST', body: JSON.stringify({
+    constraints: $('#constraints').value, sketch: $('#sketch').value,
+    failure: $('#failure').value,
+    capacity_choice: cap ? Number(cap.value) : null,
+    probe_answers: probes})});
+  const scores = res.dimension_scores || {};
+  $('#fb').innerHTML = `<p class="ok">Sim recorded.</p>` +
+    Object.keys(scores).map(k => `<p class="meta">${k}: ${scores[k]}/3</p>`).join('');
+  refreshTape();
+}
+function escapeHtml(s){ return String(s||'').replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+if (token) {
+  $('#gate').hidden = true; $('#app').hidden = false;
+  document.querySelectorAll('nav button').forEach(b => b.onclick = () => setView(b.dataset.view));
+  setView('drill');
+} else {
+  $('#mint').onclick = async () => {
+    const s = await api('/session', {method:'POST'});
+    location.href = s.url;
+  };
+}
+</script>
+</body>
+</html>
