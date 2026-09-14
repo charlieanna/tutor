@@ -39,7 +39,14 @@ def load_scenarios() -> list[dict]:
     return out
 
 
-def pick_probes(scenario: dict, content, state: dict, today: str, n: int = 2) -> list:
+def pick_probes(scenario: dict, content, state: dict, today: str, n: int = 2,
+                uncovered: tuple[str, ...] = ("tradeoff_defense",)) -> list:
+    """Weakness-weighted, but cover leftover sim dimensions first.
+
+    Steps 1–3 and 5 already own constraint_extraction, estimation,
+    technique_selection, and failure_reasoning. If probes are only the
+    two heaviest items, tradeoff_defense stays at the default 1/3.
+    """
     bank = list(scenario.get("probes") or [])
     if not bank:
         return []
@@ -50,7 +57,27 @@ def pick_probes(scenario: dict, content, state: dict, today: str, n: int = 2) ->
         w = concept_weight(content, cid, s, today, None, None)
         scored.append((w, probe))
     scored.sort(key=lambda t: -t[0])
-    return [p for _, p in scored[:n]]
+    picked: list = []
+    seen: set[int] = set()
+    for dim in uncovered:
+        for _, probe in scored:
+            if id(probe) in seen:
+                continue
+            if probe.get("dimension") != dim:
+                continue
+            picked.append(probe)
+            seen.add(id(probe))
+            if len(picked) == n:
+                return picked
+            break
+    for _, probe in scored:
+        if id(probe) in seen:
+            continue
+        picked.append(probe)
+        seen.add(id(probe))
+        if len(picked) == n:
+            break
+    return picked
 
 
 def _read_until_dot(stdin, stdout) -> str | None:
@@ -134,11 +161,13 @@ def apply_sim_answers(content, state, sc, today, *, constraints, sketch, failure
         pcid = probe["concept"]
         state.setdefault(pcid, ConceptState())
         dim = probe.get("dimension", "tradeoff_defense")
-        scores[dim] = _grade_free(
+        score = _grade_free(
             content, state, pcid, probe["prompt"],
             probe.get("rubric") or {"criteria": [
                 {"id": "p", "points": 2, "model_answer": probe.get("prompt", "")}]},
             text)
+        if scores.get(dim, 1) <= 1:
+            scores[dim] = score
     scores["failure_reasoning"] = _grade_free(
         content, state, cid2, "failure modes",
         {"criteria": [{"id": "fail", "points": 2,
@@ -212,11 +241,13 @@ def run_sim(stdin=sys.stdin, stdout=sys.stdout) -> int:
         pcid = probe["concept"]
         state.setdefault(pcid, ConceptState())
         dim = probe.get("dimension", "tradeoff_defense")
-        scores[dim] = _grade_free(
+        score = _grade_free(
             content, state, pcid, probe["prompt"],
             probe.get("rubric") or {"criteria": [
                 {"id": "p", "points": 2, "model_answer": probe.get("prompt", "")}]},
             text)
+        if scores.get(dim, 1) <= 1:
+            scores[dim] = score
 
     print("\n— 5. failure modes —", file=stdout)
     text = _read_until_dot(stdin, stdout)

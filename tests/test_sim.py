@@ -54,6 +54,12 @@ class TestSimE2E(unittest.TestCase):
             self.assertIn(dim, scores)
             self.assertGreaterEqual(scores[dim], 1)
             self.assertLessEqual(scores[dim], 3)
+        # Nonempty answers must actually fill leftover dims (not leave
+        # tradeoff_defense at the default 1 because probes collided with
+        # sketch/failure steps).
+        self.assertEqual(scores["tradeoff_defense"], 3)
+        self.assertEqual(scores["failure_reasoning"], 3)
+        self.assertIn("map reads vs close-incident", r.stdout)
 
 
 if __name__ == "__main__":

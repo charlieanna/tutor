@@ -59,7 +59,8 @@ class TestPackSizes(unittest.TestCase):
                      "receive-after-close-blocks", "nil-channel-skips-select",
                      "waitgroup-add-inside-goroutine",
                      "loop-var-fresh-per-iteration", "mutex-copied-by-value",
-                     "write-before-go-is-enough", "race-only-if-printing"):
+                     "write-before-go-is-enough", "write-before-go-not-visible",
+                     "race-only-if-printing"):
             self.assertIn(seed, go_misc)
 
 
