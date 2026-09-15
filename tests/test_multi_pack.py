@@ -15,6 +15,10 @@ sys.path.insert(0, str(ROOT))
 from fixture import content, CONCEPTS, QUESTIONS, MISCONCEPTIONS  # noqa: E402
 from engine.model import ConceptState, ValidationError, load_content  # noqa: E402
 from engine.selection import compose_session, pick_question  # noqa: E402
+from app.paths import has_authored_packs  # noqa: E402
+
+SEED_VERIFY = ROOT / "tests" / "seed" / "verify"
+SEED_PACKS = ROOT / "tests" / "seed" / "packs"
 
 FT_Q = {
     "id": "ft99", "concept": "go:closing", "level": "reasoning",
@@ -128,30 +132,29 @@ class TestSessionTypes(unittest.TestCase):
 
 class TestHarnessBackends(unittest.TestCase):
     def test_all_seed_backends_green(self):
-        r = run_cmd([sys.executable, str(VERIFY)])
+        r = run_cmd([sys.executable, str(VERIFY), str(SEED_VERIFY), str(SEED_PACKS)])
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        for name in ("dsa_q001", "dsa_q002", "q101", "q102", "q103", "q104",
-                     "q105", "sd_q015"):
+        for name in ("q101", "q102", "q103", "py_stdout", "py_timeout",
+                     "py_cases", "rubric_ok"):
             self.assertIn(f"[ok] {name}", r.stdout)
         self.assertRegex(r.stdout, r"All \d+ check\(s\) verified")
 
     def test_corrupted_python_output_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = pathlib.Path(tmp)
-            for d in ("dsa_q001", "dsa_q002", "sd_q015"):
-                shutil.copytree(ROOT / "content" / "verify" / d, tmp_path / d)
-            (tmp_path / "dsa_q001" / "solution.py").write_text("print(42)\n")
+            for d in ("py_stdout", "py_cases", "rubric_ok"):
+                shutil.copytree(SEED_VERIFY / d, tmp_path / d)
+            (tmp_path / "py_stdout" / "solution.py").write_text("print(42)\n")
             r = run_cmd([sys.executable, str(VERIFY), tmp_path])
             self.assertNotEqual(r.returncode, 0)
             self.assertIn("stdout mismatch", r.stdout)
-            self.assertIn("[ok] dsa_q002", r.stdout)
+            self.assertIn("[ok] py_cases", r.stdout)
 
     def test_fast_program_fails_timeout_mode(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = pathlib.Path(tmp)
-            shutil.copytree(ROOT / "content" / "verify" / "dsa_q002",
-                            tmp_path / "dsa_q002")
-            (tmp_path / "dsa_q002" / "solution.py").write_text("print('fast')\n")
+            shutil.copytree(SEED_VERIFY / "py_timeout", tmp_path / "py_timeout")
+            (tmp_path / "py_timeout" / "solution.py").write_text("print('fast')\n")
             r = run_cmd([sys.executable, str(VERIFY), tmp_path])
             self.assertNotEqual(r.returncode, 0)
             self.assertIn("expected TLE", r.stdout)
@@ -159,20 +162,17 @@ class TestHarnessBackends(unittest.TestCase):
     def test_python_cases_mode_green(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = pathlib.Path(tmp)
-            shutil.copytree(ROOT / "content" / "verify" / "dsa_q003",
-                            tmp_path / "dsa_q003")
+            shutil.copytree(SEED_VERIFY / "py_cases", tmp_path / "py_cases")
             r = run_cmd([sys.executable, str(VERIFY), tmp_path])
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-            self.assertIn("[ok] dsa_q003", r.stdout)
+            self.assertIn("[ok] py_cases", r.stdout)
 
     def test_python_cases_wrong_answer_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = pathlib.Path(tmp)
-            shutil.copytree(ROOT / "content" / "verify" / "dsa_q003",
-                            tmp_path / "dsa_q003")
-            (tmp_path / "dsa_q003" / "solution.py").write_text(
-                "import sys\nnums = [int(x) for x in sys.stdin.readline().split(',')]\n"
-                "print(len(nums))  # plausible shape, wrong answer\n")
+            shutil.copytree(SEED_VERIFY / "py_cases", tmp_path / "py_cases")
+            (tmp_path / "py_cases" / "solution.py").write_text(
+                "import sys\nprint(len(sys.stdin.read()))\n")
             r = run_cmd([sys.executable, str(VERIFY), tmp_path])
             self.assertNotEqual(r.returncode, 0)
             self.assertIn("stdout mismatch", r.stdout)
@@ -180,32 +180,35 @@ class TestHarnessBackends(unittest.TestCase):
     def test_rubric_without_rubric_json_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = pathlib.Path(tmp)
-            shutil.copytree(ROOT / "content" / "verify" / "sd_q015",
-                            tmp_path / "sd_q015")
-            (tmp_path / "sd_q015" / "rubric.json").unlink()
+            shutil.copytree(SEED_VERIFY / "rubric_ok", tmp_path / "rubric_ok")
+            (tmp_path / "rubric_ok" / "rubric.json").unlink()
             r = run_cmd([sys.executable, str(VERIFY), tmp_path])
             self.assertNotEqual(r.returncode, 0)
             self.assertIn("needs rubric.json", r.stdout)
 
     def test_numeric_bad_value_fails(self):
-        """Corrupt the pack's numeric answer key in a temp packs root."""
+        """Corrupt a pack's numeric answer key in a temp packs root."""
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = pathlib.Path(tmp)
-            shutil.copytree(ROOT / "content" / "packs" / "system-design",
-                            tmp_path / "system-design")
-            qpath = tmp_path / "system-design" / "questions.json"
+            src = SEED_PACKS / "go"
+            shutil.copytree(src, tmp_path / "go")
+            qpath = tmp_path / "go" / "questions.json"
             qs = json.loads(qpath.read_text())
+            found = False
             for q in qs:
                 if q.get("kind") == "numeric":
                     q["answer_key"]["value"] = 42
+                    found = True
+            self.assertTrue(found, "seed go pack needs a numeric question")
             qpath.write_text(json.dumps(qs))
             r = run_cmd([sys.executable, str(VERIFY),
-                         str(ROOT / "content" / "verify"), str(tmp_path)])
+                         str(SEED_VERIFY), str(tmp_path)])
             self.assertNotEqual(r.returncode, 0)
             self.assertIn("declared value", r.stdout)
 
 
 class TestDesignSessionE2E(unittest.TestCase):
+    @unittest.skipUnless(has_authored_packs(), "authored packs not mounted")
     def test_design_session_self_grade_flow(self):
         with tempfile.TemporaryDirectory() as tmp:
             state = pathlib.Path(tmp) / "state.json"

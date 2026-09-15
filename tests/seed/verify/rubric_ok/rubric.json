@@ -1,0 +1,14 @@
+{
+  "criteria": [
+    {
+      "id": "pick",
+      "points": 2,
+      "model_answer": "names one decision"
+    },
+    {
+      "id": "cost",
+      "points": 2,
+      "model_answer": "names the cost of that decision"
+    }
+  ]
+}

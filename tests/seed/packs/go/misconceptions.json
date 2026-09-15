@@ -1,0 +1,22 @@
+{
+  "buffered-never-blocks": {
+    "belief": "b",
+    "clarification": "c",
+    "counterexample": "second send on cap-1 blocks"
+  },
+  "close-then-send-fine": {
+    "belief": "b",
+    "clarification": "c",
+    "counterexample": "send after close panics"
+  },
+  "select-no-default-spins": {
+    "belief": "b",
+    "clarification": "c",
+    "counterexample": "ready case with no nil spins"
+  },
+  "m1": {
+    "belief": "b",
+    "clarification": "c",
+    "counterexample": "tagged trap option"
+  }
+}

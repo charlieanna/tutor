@@ -20,8 +20,8 @@ from engine.model import (ConceptState, ValidationError,    # noqa: E402
                           state_from_json, state_to_json)
 from engine.selection import compose_session, report        # noqa: E402
 from engine.update import on_answer, self_grade             # noqa: E402
+from app.paths import packs_dir                             # noqa: E402
 
-PACKS_DIR = ROOT / "content" / "packs"
 STATE_PATH = pathlib.Path(os.environ.get("TUTOR_STATE", ROOT / "state.json"))
 EVENTS_PATH = pathlib.Path(os.environ.get("TUTOR_EVENTS", ROOT / "events.jsonl"))
 LETTERS = "ABCDEFGH"
@@ -45,7 +45,10 @@ def load_packs() -> tuple[dict, list[dict], dict, dict]:
     questions: list[dict] = []
     misconceptions: dict = {}
     examples: dict = {}
-    for pack_dir in sorted(p for p in PACKS_DIR.iterdir() if p.is_dir()):
+    packs_root = packs_dir()
+    if not packs_root.is_dir():
+        return concepts, questions, misconceptions, examples
+    for pack_dir in sorted(p for p in packs_root.iterdir() if p.is_dir()):
         pack_concepts = json.loads((pack_dir / "concepts.json").read_text())
         concepts.update(pack_concepts)
         questions.extend(json.loads((pack_dir / "questions.json").read_text()))
@@ -83,7 +86,7 @@ def save_state(state: dict[str, ConceptState], sim_history: list | None = None) 
 
 
 def load_goal() -> dict | None:
-    goal_path = PACKS_DIR.parent / "goals.json"
+    goal_path = packs_dir().parent / "goals.json"
     if goal_path.exists():
         return json.loads(goal_path.read_text())
     return None

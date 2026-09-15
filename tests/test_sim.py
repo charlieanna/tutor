@@ -8,6 +8,8 @@ import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from app.paths import has_authored_packs  # noqa: E402
 CLI = ROOT / "app" / "cli.py"
 
 
@@ -30,6 +32,7 @@ class TestSimE2E(unittest.TestCase):
         self.events = pathlib.Path(self.tmp.name) / "events.jsonl"
         self.addCleanup(self.tmp.cleanup)
 
+    @unittest.skipUnless(has_authored_packs(), "authored packs not mounted")
     def test_full_sim_records_five_dimensions(self):
         stdin = (
             "SLOs missing; peak ratio unknown; close-incident under partition.\n.\n"

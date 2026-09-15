@@ -1,4 +1,5 @@
-"""Pack launch-slice sizes for M5 / M8 / M9."""
+"""Pack launch-slice sizes for authored packs. Skipped on a public clone
+that only has the synthetic seed pack."""
 import sys
 import pathlib
 import unittest
@@ -7,8 +8,10 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app.cli import load_content_packs  # noqa: E402
+from app.paths import has_authored_packs, packs_dir  # noqa: E402
 
 
+@unittest.skipUnless(has_authored_packs(), "authored packs not mounted")
 class TestPackSizes(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -50,7 +53,7 @@ class TestPackSizes(unittest.TestCase):
         self.assertGreaterEqual(len(self._qs("go:")), 40)
         import json
         go_misc = json.loads(
-            (ROOT / "content" / "packs" / "go" / "misconceptions.json").read_text())
+            (packs_dir() / "go" / "misconceptions.json").read_text())
         self.assertGreaterEqual(len(go_misc), 22)
         for seed in ("go-runs-inline", "goroutine-always-runs",
                      "unbuffered-buffers-one", "rendezvous-instantaneous",

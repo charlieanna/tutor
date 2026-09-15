@@ -1,0 +1,42 @@
+{
+  "go:goroutines": {
+    "prereqs": [],
+    "blurb": "",
+    "canonical": []
+  },
+  "go:channels-unbuffered": {
+    "prereqs": [
+      "go:goroutines"
+    ],
+    "blurb": "",
+    "canonical": []
+  },
+  "go:channels-buffered": {
+    "prereqs": [
+      "go:channels-unbuffered"
+    ],
+    "blurb": "",
+    "canonical": []
+  },
+  "go:closing": {
+    "prereqs": [
+      "go:channels-unbuffered"
+    ],
+    "blurb": "",
+    "canonical": []
+  },
+  "go:select": {
+    "prereqs": [
+      "go:channels-unbuffered"
+    ],
+    "blurb": "",
+    "canonical": []
+  },
+  "go:nil-channels": {
+    "prereqs": [
+      "go:select"
+    ],
+    "blurb": "",
+    "canonical": []
+  }
+}

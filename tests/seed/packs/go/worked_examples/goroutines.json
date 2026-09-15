@@ -1,0 +1,20 @@
+{
+  "title": "A goroutine is cheap until the run queue is not",
+  "joints": {
+    "bottleneck": {
+      "question": "What saturates first as goroutines pile up?",
+      "options": [
+        {
+          "text": "the scheduler run queue",
+          "correct": true
+        },
+        {
+          "text": "the garbage collector",
+          "ruled_out_by": "the setup names runnable-goroutine growth, not heap growth"
+        }
+      ],
+      "model_answer": "the scheduler run queue"
+    }
+  },
+  "concept": "go:goroutines"
+}

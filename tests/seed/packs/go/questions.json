@@ -1,0 +1,367 @@
+[
+  {
+    "id": "q001",
+    "concept": "go:goroutines",
+    "level": "recall",
+    "kind": "mcq",
+    "stem": "What is a goroutine?",
+    "options": [
+      {
+        "text": "a",
+        "correct": true
+      },
+      {
+        "text": "b",
+        "ruled_out_by": "eliminated by a stem fact"
+      }
+    ],
+    "explanation": ""
+  },
+  {
+    "id": "q002",
+    "concept": "go:goroutines",
+    "level": "application",
+    "kind": "mcq",
+    "stem": "Launch one.",
+    "options": [
+      {
+        "text": "a",
+        "correct": true
+      },
+      {
+        "text": "b",
+        "ruled_out_by": "eliminated by a stem fact"
+      }
+    ],
+    "explanation": ""
+  },
+  {
+    "id": "q003",
+    "concept": "go:channels-unbuffered",
+    "level": "recall",
+    "kind": "mcq",
+    "stem": "Unbuffered send semantics?",
+    "options": [
+      {
+        "text": "a",
+        "correct": true
+      },
+      {
+        "text": "b",
+        "ruled_out_by": "eliminated by a stem fact"
+      }
+    ],
+    "explanation": ""
+  },
+  {
+    "id": "q004",
+    "concept": "go:channels-unbuffered",
+    "level": "application",
+    "kind": "mcq",
+    "stem": "Pass a value.",
+    "options": [
+      {
+        "text": "a",
+        "correct": true
+      },
+      {
+        "text": "b",
+        "ruled_out_by": "eliminated by a stem fact"
+      }
+    ],
+    "explanation": ""
+  },
+  {
+    "id": "q005",
+    "concept": "go:channels-buffered",
+    "level": "recall",
+    "kind": "mcq",
+    "stem": "Buffered send blocks when?",
+    "options": [
+      {
+        "text": "a",
+        "correct": true
+      },
+      {
+        "text": "b",
+        "ruled_out_by": "eliminated by a stem fact"
+      }
+    ],
+    "explanation": ""
+  },
+  {
+    "id": "q006",
+    "concept": "go:channels-buffered",
+    "level": "application",
+    "kind": "mcq",
+    "stem": "ch := make(chan int, 1); send twice - what happens?",
+    "options": [
+      {
+        "text": "second send blocks",
+        "correct": true
+      },
+      {
+        "text": "n",
+        "ruled_out_by": "eliminated by a stem fact",
+        "misconception": "buffered-never-blocks"
+      },
+      {
+        "text": "o",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "t",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "h",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "i",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "n",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "g",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": ",",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": " ",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "i",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "t",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": " ",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "n",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "e",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "v",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "e",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "r",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": " ",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "b",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "l",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "o",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "c",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "k",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "s",
+        "ruled_out_by": "eliminated by a stem fact"
+      }
+    ],
+    "explanation": "",
+    "spec_guarantee": true
+  },
+  {
+    "id": "q007",
+    "concept": "go:closing",
+    "level": "recall",
+    "kind": "mcq",
+    "stem": "Who may close?",
+    "options": [
+      {
+        "text": "a",
+        "correct": true
+      },
+      {
+        "text": "b",
+        "ruled_out_by": "eliminated by a stem fact"
+      }
+    ],
+    "explanation": ""
+  },
+  {
+    "id": "q008",
+    "concept": "go:closing",
+    "level": "application",
+    "kind": "mcq",
+    "stem": "Send after close?",
+    "options": [
+      {
+        "text": "panics",
+        "correct": true
+      },
+      {
+        "text": "f",
+        "ruled_out_by": "eliminated by a stem fact",
+        "misconception": "close-then-send-fine"
+      },
+      {
+        "text": "i",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "n",
+        "ruled_out_by": "eliminated by a stem fact"
+      },
+      {
+        "text": "e",
+        "ruled_out_by": "eliminated by a stem fact"
+      }
+    ],
+    "explanation": "",
+    "spec_guarantee": true
+  },
+  {
+    "id": "q009",
+    "concept": "go:select",
+    "level": "recall",
+    "kind": "mcq",
+    "stem": "What does select do?",
+    "options": [
+      {
+        "text": "a",
+        "correct": true
+      },
+      {
+        "text": "b",
+        "ruled_out_by": "eliminated by a stem fact"
+      }
+    ],
+    "explanation": ""
+  },
+  {
+    "id": "q010",
+    "concept": "go:nil-channels",
+    "level": "recall",
+    "kind": "mcq",
+    "stem": "Nil channel in select?",
+    "options": [
+      {
+        "text": "a",
+        "correct": true
+      },
+      {
+        "text": "b",
+        "ruled_out_by": "eliminated by a stem fact"
+      }
+    ],
+    "explanation": ""
+  },
+  {
+    "id": "qn01",
+    "concept": "go:channels-buffered",
+    "level": "application",
+    "kind": "numeric",
+    "stem": "A buffered channel has capacity 3. How many sends complete without blocking (no receiver)?",
+    "options": [
+      {
+        "text": "3",
+        "correct": true
+      },
+      {
+        "text": "10",
+        "ruled_out_by": "capacity caps non-blocking sends",
+        "misconception": "buffered-never-blocks"
+      },
+      {
+        "text": "4",
+        "ruled_out_by": "capacity 3 admits exactly 3 sends"
+      }
+    ],
+    "answer_key": {
+      "expr": "2 + 1",
+      "value": 3,
+      "unit": "sends"
+    },
+    "distractor_errors": [
+      "assumed buffered channels never block",
+      "off-by-one on capacity"
+    ],
+    "explanation": "Capacity 3 admits exactly 3 sends."
+  },
+  {
+    "id": "ft01",
+    "concept": "go:select",
+    "level": "reasoning",
+    "kind": "free_text",
+    "stem": "Explain when a select without default can spin, and the nil-channel idiom that stops it.",
+    "word_limit": 150,
+    "rubric": {
+      "criteria": [
+        {
+          "id": "spin-cause",
+          "points": 2,
+          "model_answer": "A busy ready case loops hot"
+        },
+        {
+          "id": "nil-idiom",
+          "points": 2,
+          "model_answer": "Setting a case channel to nil disables it"
+        }
+      ],
+      "misconceptions": {
+        "select-no-default-spins": "belief text"
+      }
+    },
+    "explanation": ""
+  },
+  {
+    "id": "ft02",
+    "concept": "go:nil-channels",
+    "level": "reasoning",
+    "kind": "free_text",
+    "stem": "When do you nil a channel inside a select loop, and what does it cost?",
+    "word_limit": 150,
+    "rubric": {
+      "criteria": [
+        {
+          "id": "disable-case",
+          "points": 2,
+          "model_answer": "A nil channel disables that case; the loop can still block on the rest"
+        }
+      ],
+      "misconceptions": {}
+    },
+    "explanation": ""
+  }
+]

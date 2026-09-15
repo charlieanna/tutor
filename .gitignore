@@ -5,3 +5,5 @@ data/
 state.json
 events.jsonl
 .DS_Store
+content/packs/
+content/verify/

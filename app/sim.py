@@ -22,8 +22,7 @@ from engine.update import on_answer
 
 from app.cli import (LETTERS, load_content_packs, load_state, log_event,
                      read_choice, save_state)
-
-PACKS_DIR = ROOT / "content" / "packs"
+from app.paths import packs_dir
 DEFAULT_DIMS = ("constraint_extraction", "estimation", "technique_selection",
                 "tradeoff_defense", "failure_reasoning")
 _STEP_OWNED = frozenset({
@@ -33,7 +32,10 @@ _STEP_OWNED = frozenset({
 
 def load_scenarios() -> list[dict]:
     out = []
-    for pack_dir in sorted(p for p in PACKS_DIR.iterdir() if p.is_dir()):
+    packs_root = packs_dir()
+    if not packs_root.is_dir():
+        return out
+    for pack_dir in sorted(p for p in packs_root.iterdir() if p.is_dir()):
         simd = pack_dir / "sims"
         if not simd.is_dir():
             continue

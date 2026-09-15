@@ -25,9 +25,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from engine.model import safe_eval, ValidationError          # noqa: E402
+from app.paths import packs_dir, verify_dir                  # noqa: E402
 
-VERIFY_DIR = ROOT / "content" / "verify"
-PACKS_DIR = ROOT / "content" / "packs"
 DEFAULT_TIMEOUT = 10
 DEADLOCK_MARKER = "all goroutines are asleep"
 
@@ -165,6 +164,8 @@ def check_numeric_packs(packs_root: pathlib.Path) -> tuple[list[str], int]:
     dir is missing when they reference one."""
     errors: list[str] = []
     n = 0
+    if not packs_root.is_dir():
+        return errors, n
     for pack_dir in sorted(p for p in packs_root.iterdir() if p.is_dir()):
         qpath = pack_dir / "questions.json"
         if not qpath.exists():
@@ -210,12 +211,14 @@ def check_one(qdir: pathlib.Path) -> list[str]:
     return [f"{qdir.name}: unknown backend {backend!r}"]
 
 
-def run_all(verify_root: pathlib.Path = VERIFY_DIR,
-            packs_root: pathlib.Path = PACKS_DIR) -> tuple[list[str], int]:
+def run_all(verify_root: pathlib.Path | None = None,
+            packs_root: pathlib.Path | None = None) -> tuple[list[str], int]:
+    verify_root = verify_root or verify_dir()
+    packs_root = packs_root or packs_dir()
     errors: list[str] = []
     total = 0
 
-    qdirs = sorted(d for d in verify_root.iterdir() if d.is_dir())
+    qdirs = sorted(d for d in verify_root.iterdir() if d.is_dir()) if verify_root.is_dir() else []
     for qdir in qdirs:
         errs = check_one(qdir)
         status = "FAIL" if errs else "ok"
@@ -237,8 +240,8 @@ def run_all(verify_root: pathlib.Path = VERIFY_DIR,
 
 
 def main(argv: list[str]) -> int:
-    verify_root = pathlib.Path(argv[1]) if len(argv) > 1 else VERIFY_DIR
-    packs_root = pathlib.Path(argv[2]) if len(argv) > 2 else PACKS_DIR
+    verify_root = pathlib.Path(argv[1]) if len(argv) > 1 else verify_dir()
+    packs_root = pathlib.Path(argv[2]) if len(argv) > 2 else packs_dir()
     errors, total = run_all(verify_root, packs_root)
     if errors:
         print(f"\n{len(errors)} failure(s) across {total} check(s).")
