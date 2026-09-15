@@ -1,6 +1,7 @@
 # All engine constants. Do not duplicate these elsewhere.
 MASTERED = 0.8            # mastery at or above this = level passed
 RECALL_OK = 0.7           # recall threshold used by diagnosis
+TRAP = 0.7                # misconception weight: trap embed, report, diagnose
 UP = 0.3                  # correct-answer gain factor
 DOWN = 0.6                # wrong-answer decay factor
 EVIDENCE = 0.5            # misconception weight increment per tagged wrong answer

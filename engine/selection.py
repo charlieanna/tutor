@@ -38,7 +38,7 @@ def top_misconception(state: ConceptState) -> Optional[str]:
     if not state.misconceptions:
         return None
     mid, w = max(state.misconceptions.items(), key=lambda kv: kv[1])
-    return mid if w >= 0.7 else None
+    return mid if w >= config.TRAP else None
 
 
 def resolve_overdue(state: ConceptState, today: str) -> bool:
@@ -211,7 +211,7 @@ def report(content: Content, state: dict[str, ConceptState], today: str) -> list
             "frontier": s.frontier(),
             "fade": fade_level(s),
             "fails": s.fails,
-            "misconceptions": [m for m, w in s.misconceptions.items() if w >= 0.7],
+            "misconceptions": [m for m, w in s.misconceptions.items() if w >= config.TRAP],
             "overdue": bool(s.due and s.due <= today),
             "score": deficit * content.centrality(cid),
         })

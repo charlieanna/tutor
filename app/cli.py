@@ -30,6 +30,14 @@ FREE_TEXT_KIND = "free_text"
 
 # ------------------------------------------------------------------- loading
 
+def _pack_namespace(pack_concepts: dict, pack_dir: pathlib.Path) -> str:
+    if pack_concepts:
+        first = next(iter(pack_concepts))
+        if ":" in first:
+            return first.split(":", 1)[0]
+    return pack_dir.name
+
+
 def load_packs() -> tuple[dict, list[dict], dict, dict]:
     """Merge all packs under content/packs/ (schemas are namespaced; merging
     is safe — cross-pack prereqs are rejected by the validator)."""
@@ -37,14 +45,14 @@ def load_packs() -> tuple[dict, list[dict], dict, dict]:
     questions: list[dict] = []
     misconceptions: dict = {}
     examples: dict = {}
-    prefix = {"system-design": "sd", "dsa": "dsa", "go": "go"}
     for pack_dir in sorted(p for p in PACKS_DIR.iterdir() if p.is_dir()):
-        concepts.update(json.loads((pack_dir / "concepts.json").read_text()))
+        pack_concepts = json.loads((pack_dir / "concepts.json").read_text())
+        concepts.update(pack_concepts)
         questions.extend(json.loads((pack_dir / "questions.json").read_text()))
         misconceptions.update(json.loads((pack_dir / "misconceptions.json").read_text()))
         exdir = pack_dir / "worked_examples"
         if exdir.is_dir():
-            ns = prefix.get(pack_dir.name, pack_dir.name)
+            ns = _pack_namespace(pack_concepts, pack_dir)
             for jf in exdir.glob("*.json"):
                 data = json.loads(jf.read_text())
                 cid = data.get("concept") or f"{ns}:{jf.stem}"

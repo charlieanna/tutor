@@ -24,8 +24,11 @@ from app.cli import (LETTERS, load_content_packs, load_state, log_event,
                      read_choice, save_state)
 
 PACKS_DIR = ROOT / "content" / "packs"
-DIMS = ("constraint_extraction", "estimation", "technique_selection",
-        "tradeoff_defense", "failure_reasoning")
+DEFAULT_DIMS = ("constraint_extraction", "estimation", "technique_selection",
+                "tradeoff_defense", "failure_reasoning")
+_STEP_OWNED = frozenset({
+    "constraint_extraction", "estimation", "technique_selection", "failure_reasoning",
+})
 
 
 def load_scenarios() -> list[dict]:
@@ -39,14 +42,56 @@ def load_scenarios() -> list[dict]:
     return out
 
 
-def pick_probes(scenario: dict, content, state: dict, today: str, n: int = 2,
-                uncovered: tuple[str, ...] = ("tradeoff_defense",)) -> list:
-    """Weakness-weighted, but cover leftover sim dimensions first.
+def _require_concepts(sc: dict) -> list[str]:
+    concepts = sc.get("concepts")
+    if not concepts:
+        raise ValueError(f"scenario {sc.get('id')!r} missing concepts")
+    return concepts
 
-    Steps 1–3 and 5 already own constraint_extraction, estimation,
-    technique_selection, and failure_reasoning. If probes are only the
-    two heaviest items, tradeoff_defense stays at the default 1/3.
-    """
+
+def _concept_at(sc: dict, role: str) -> str:
+    concepts = _require_concepts(sc)
+    if role == "first":
+        return concepts[0]
+    if role == "last":
+        return concepts[-1]
+    raise ValueError(f"unknown concept role {role!r}")
+
+
+def _score_dimensions(sc: dict) -> tuple[str, ...]:
+    dims = sc.get("dimensions")
+    if dims:
+        return tuple(dims)
+    return DEFAULT_DIMS
+
+
+def _probe_uncovered(sc: dict) -> tuple[str, ...]:
+    return tuple(d for d in _score_dimensions(sc) if d not in _STEP_OWNED)
+
+
+def _step_rubric(sc: dict, dimension: str) -> dict:
+    entry = (sc.get("step_rubrics") or {}).get(dimension)
+    if not entry or not entry.get("rubric"):
+        raise ValueError(
+            f"scenario {sc.get('id')!r} missing step_rubrics[{dimension!r}]")
+    return entry["rubric"]
+
+
+def _step_concept(sc: dict, dimension: str) -> str:
+    entry = (sc.get("step_rubrics") or {}).get(dimension) or {}
+    role = entry.get("concept")
+    if role in ("first", "last"):
+        return _concept_at(sc, role)
+    if isinstance(role, str) and role:
+        return role
+    return _concept_at(sc, "first" if dimension == "constraint_extraction" else "last")
+
+
+def pick_probes(scenario: dict, content, state: dict, today: str, n: int = 2,
+                uncovered: tuple[str, ...] | None = None) -> list:
+    """Weakness-weighted, but cover leftover sim dimensions first."""
+    if uncovered is None:
+        uncovered = _probe_uncovered(scenario)
     bank = list(scenario.get("probes") or [])
     if not bank:
         return []
@@ -134,33 +179,33 @@ def _grade_numeric(content, state, q, chosen, today):
 def apply_sim_answers(content, state, sc, today, *, constraints, sketch, failure,
                       capacity_choice=None, probe_answers=None) -> dict:
     """Score a completed sim from structured answers (web + tests)."""
-    scores = {d: 1 for d in DIMS}
-    cid = (sc.get("concepts") or ["sd:capacity-estimation"])[0]
+    dims = _score_dimensions(sc)
+    scores = {d: 1 for d in dims}
+    cid = _step_concept(sc, "constraint_extraction")
     state.setdefault(cid, ConceptState())
-    rub = {"criteria": [{"id": "constraints", "points": 2,
-                         "model_answer": "names missing SLOs, write mix, or geo"}]}
     scores["constraint_extraction"] = _grade_free(
-        content, state, cid, sc["brief"], rub, constraints or "")
+        content, state, cid, sc["brief"],
+        _step_rubric(sc, "constraint_extraction"), constraints or "")
     numeric_qs = [q for q in content.questions
-                  if q.kind == "numeric" and q.concept in sc.get("concepts", [])]
+                  if q.kind == "numeric" and q.concept in _require_concepts(sc)]
     if numeric_qs and capacity_choice is not None:
         q = numeric_qs[0]
         if 0 <= capacity_choice < len(q.options):
             scores["estimation"] = _grade_numeric(
                 content, state, q, capacity_choice, today)
-    cid2 = (sc.get("concepts") or [cid])[-1]
+    cid2 = _step_concept(sc, "technique_selection")
     state.setdefault(cid2, ConceptState())
     scores["technique_selection"] = _grade_free(
         content, state, cid2, "sketch",
-        {"criteria": [{"id": "sketch", "points": 2,
-                       "model_answer": "names a technique and the load that justifies it"}]},
-        sketch or "")
+        _step_rubric(sc, "technique_selection"), sketch or "")
     answers = list(probe_answers or [])
     for i, probe in enumerate(pick_probes(sc, content, state, today, n=2)):
         text = answers[i] if i < len(answers) else ""
         pcid = probe["concept"]
         state.setdefault(pcid, ConceptState())
-        dim = probe.get("dimension", "tradeoff_defense")
+        dim = probe.get("dimension")
+        if not dim:
+            continue
         score = _grade_free(
             content, state, pcid, probe["prompt"],
             probe.get("rubric") or {"criteria": [
@@ -168,11 +213,11 @@ def apply_sim_answers(content, state, sc, today, *, constraints, sketch, failure
             text)
         if scores.get(dim, 1) <= 1:
             scores[dim] = score
+    fail_cid = _step_concept(sc, "failure_reasoning")
+    state.setdefault(fail_cid, ConceptState())
     scores["failure_reasoning"] = _grade_free(
-        content, state, cid2, "failure modes",
-        {"criteria": [{"id": "fail", "points": 2,
-                       "model_answer": "names a concrete failure and the blast radius"}]},
-        failure or "")
+        content, state, fail_cid, "failure modes",
+        _step_rubric(sc, "failure_reasoning"), failure or "")
     return scores
 
 
@@ -185,26 +230,26 @@ def run_sim(stdin=sys.stdin, stdout=sys.stdout) -> int:
     state, sim_history = load_state(list(content.concepts))
     today = date.today().isoformat()
     sc = scenarios[0]
+    dims = _score_dimensions(sc)
     print(f"# {sc['title']}\n", file=stdout)
     print(sc["brief"], file=stdout)
 
-    scores = {d: 1 for d in DIMS}
+    scores = {d: 1 for d in dims}
 
     print("\n— 1. constraints (what did the brief leave unspecified?) —", file=stdout)
     text = _read_until_dot(stdin, stdout)
     if text is None:
         print("Session ended.", file=stdout)
         return 0
-    cid = (sc.get("concepts") or ["sd:capacity-estimation"])[0]
+    cid = _step_concept(sc, "constraint_extraction")
     state.setdefault(cid, ConceptState())
-    rub = {"criteria": [{"id": "constraints", "points": 2,
-                         "model_answer": "names missing SLOs, write mix, or geo"}]}
     scores["constraint_extraction"] = _grade_free(
-        content, state, cid, sc["brief"], rub, text)
+        content, state, cid, sc["brief"],
+        _step_rubric(sc, "constraint_extraction"), text)
 
     print("\n— 2. capacity math —", file=stdout)
     numeric_qs = [q for q in content.questions
-                  if q.kind == "numeric" and q.concept in sc.get("concepts", [])]
+                  if q.kind == "numeric" and q.concept in _require_concepts(sc)]
     if numeric_qs:
         q = numeric_qs[0]
         print(q.stem, file=stdout)
@@ -223,13 +268,11 @@ def run_sim(stdin=sys.stdin, stdout=sys.stdout) -> int:
     if text is None:
         print("Session ended.", file=stdout)
         return 0
-    cid2 = (sc.get("concepts") or [cid])[-1]
+    cid2 = _step_concept(sc, "technique_selection")
     state.setdefault(cid2, ConceptState())
     scores["technique_selection"] = _grade_free(
         content, state, cid2, "sketch",
-        {"criteria": [{"id": "sketch", "points": 2,
-                       "model_answer": "names a technique and the load that justifies it"}]},
-        text)
+        _step_rubric(sc, "technique_selection"), text)
 
     print("\n— 4. deep-dive (selected from your weakness map) —", file=stdout)
     for probe in pick_probes(sc, content, state, today, n=2):
@@ -240,7 +283,9 @@ def run_sim(stdin=sys.stdin, stdout=sys.stdout) -> int:
             return 0
         pcid = probe["concept"]
         state.setdefault(pcid, ConceptState())
-        dim = probe.get("dimension", "tradeoff_defense")
+        dim = probe.get("dimension")
+        if not dim:
+            continue
         score = _grade_free(
             content, state, pcid, probe["prompt"],
             probe.get("rubric") or {"criteria": [
@@ -254,17 +299,17 @@ def run_sim(stdin=sys.stdin, stdout=sys.stdout) -> int:
     if text is None:
         print("Session ended.", file=stdout)
         return 0
+    fail_cid = _step_concept(sc, "failure_reasoning")
+    state.setdefault(fail_cid, ConceptState())
     scores["failure_reasoning"] = _grade_free(
-        content, state, cid2, "failure modes",
-        {"criteria": [{"id": "fail", "points": 2,
-                       "model_answer": "names a concrete failure and the blast radius"}]},
-        text)
+        content, state, fail_cid, "failure modes",
+        _step_rubric(sc, "failure_reasoning"), text)
 
     sim_history.append({"scenario": sc["id"], "date": today,
                         "dimension_scores": scores})
     save_state(state, sim_history)
     print("\n— dimension scores —", file=stdout)
-    for d in DIMS:
+    for d in dims:
         print(f"  {d}: {scores[d]}/3", file=stdout)
     print("sim recorded.", file=stdout)
     return 0

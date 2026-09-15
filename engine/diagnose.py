@@ -23,7 +23,7 @@ def diagnose_state_only(s: ConceptState) -> dict:
     # 2. top misconception >= 0.7 -> re-embed as a distractor
     if s.misconceptions:
         mid, w = max(s.misconceptions.items(), key=lambda kv: kv[1])
-        if w >= 0.7:
+        if w >= config.TRAP:
             return {"type": "misconception", "trap": mid,
                     "message": f"re-testing with {mid} embedded as a distractor"}
 
